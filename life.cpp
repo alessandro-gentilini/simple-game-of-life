@@ -16,7 +16,7 @@ License: GNU General Public License v3
 #include <algorithm>
 #include <sstream>
 #include <ctime>
-#include <set>
+#include <deque>
 #include <map>
 
 #undef max
@@ -280,6 +280,11 @@ public:
       }
    }
 
+   bool operator==(const Cells& rhs ) const
+   {
+      return d == rhs.d;
+   }
+
    int r,c,cnt_max;
 private:
    std::vector< std::vector< T > > d;
@@ -310,21 +315,35 @@ Cells cells(170,170,0/*0.25*/);
 Cells temp(170,170,0);
 Grid grid;
 
-std::set< Cells > generations;
+class Generations
+{
+public:
+   Generations (size_t sz):size(sz){}
+   
+   size_t count( const Cells& c ) const 
+   {
+      return std::find( q.begin(), q.end(), c )!=q.end()?1:0;
+   }
+
+   void insert( const Cells& c )
+   {
+      if ( q.size() < size ) {
+         q.push_back( c );
+      } else {
+         q.pop_front();
+         q.push_back( c );
+      }
+   }
+private:
+   std::deque< Cells > q;
+   const size_t size;
+};
+
+Generations generations(3);
 
 HBRUSH black;
 HBRUSH white;
 
-//
-//   FUNCTION: InitInstance(HINSTANCE, int)
-//
-//   PURPOSE: Saves instance handle and creates main window
-//
-//   COMMENTS:
-//
-//        In this function, we save the instance handle in a global variable and
-//        create and display the main program window.
-//
 BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 {
    HWND hWnd;
@@ -371,7 +390,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
    F_pentomino.push_back(Point(1,1));
    F_pentomino.push_back(Point(2,1));
 
-   //cells.set(F_pentomino);
+   cells.set(F_pentomino);
 
    Animal die_hard;
    die_hard.push_back(Point(0,6));
@@ -393,7 +412,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
    acorn.push_back(Point(2,6));
    acorn.push_back(Point(2,7));
 
-   cells.set( acorn );
+   //cells.set( acorn );
 
 
    
