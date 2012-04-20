@@ -1,5 +1,12 @@
-// life.cpp : Defines the entry point for the application.
-//
+/*
+Simple game of Life
+
+Warning: the code is not polished!
+
+Author:  Alessandro Gentilini
+Source:  https://agentilini@code.google.com/p/simple-game-of-life/
+License: GNU General Public License v3
+*/
 
 #include "stdafx.h"
 #include "life.h"
@@ -17,47 +24,31 @@
 
 #define MAX_LOADSTRING 100
 
-// Global Variables:
-HINSTANCE hInst;                        // current instance
-TCHAR szTitle[MAX_LOADSTRING];               // The title bar text
-TCHAR szWindowClass[MAX_LOADSTRING];         // the main window class name
 
-// Forward declarations of functions included in this code module:
-ATOM            MyRegisterClass(HINSTANCE hInstance);
-BOOL            InitInstance(HINSTANCE, int);
-LRESULT CALLBACK   WndProc(HWND, UINT, WPARAM, LPARAM);
-INT_PTR CALLBACK   About(HWND, UINT, WPARAM, LPARAM);
+HINSTANCE hInst;
+TCHAR szTitle[MAX_LOADSTRING];
+TCHAR szWindowClass[MAX_LOADSTRING];
 
-int APIENTRY _tWinMain(HINSTANCE hInstance,
-                     HINSTANCE hPrevInstance,
-                     LPTSTR    lpCmdLine,
-                     int       nCmdShow)
+ATOM MyRegisterClass(HINSTANCE hInstance);
+BOOL InitInstance(HINSTANCE, int);
+LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
+INT_PTR CALLBACK About(HWND, UINT, WPARAM, LPARAM);
+
+
+int APIENTRY _tWinMain(HINSTANCE hInstance, HINSTANCE, LPTSTR, int nCmdShow)
 {
-   UNREFERENCED_PARAMETER(hPrevInstance);
-   UNREFERENCED_PARAMETER(lpCmdLine);
-
-    // TODO: Place code here.
-   MSG msg;
-   HACCEL hAccelTable;
-
-   // Initialize global strings
    LoadString(hInstance, IDS_APP_TITLE, szTitle, MAX_LOADSTRING);
    LoadString(hInstance, IDC_LIFE, szWindowClass, MAX_LOADSTRING);
    MyRegisterClass(hInstance);
 
-   // Perform application initialization:
-   if (!InitInstance (hInstance, nCmdShow))
-   {
+   if (!InitInstance(hInstance, nCmdShow)) {
       return FALSE;
    }
 
-   hAccelTable = LoadAccelerators(hInstance, MAKEINTRESOURCE(IDC_LIFE));
-
-   // Main message loop:
-   while (GetMessage(&msg, NULL, 0, 0))
-   {
-      if (!TranslateAccelerator(msg.hwnd, hAccelTable, &msg))
-      {
+   HACCEL hAccelTable = LoadAccelerators(hInstance, MAKEINTRESOURCE(IDC_LIFE));
+   MSG msg;
+   while (GetMessage(&msg, NULL, 0, 0)) {
+      if (!TranslateAccelerator(msg.hwnd, hAccelTable, &msg)) {
          TranslateMessage(&msg);
          DispatchMessage(&msg);
       }
@@ -66,21 +57,6 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
    return (int) msg.wParam;
 }
 
-
-
-//
-//  FUNCTION: MyRegisterClass()
-//
-//  PURPOSE: Registers the window class.
-//
-//  COMMENTS:
-//
-//    This function and its usage are only necessary if you want this code
-//    to be compatible with Win32 systems prior to the 'RegisterClassEx'
-//    function that was added to Windows 95. It is important to call this function
-//    so that the application will get 'well formed' small icons associated
-//    with it.
-//
 ATOM MyRegisterClass(HINSTANCE hInstance)
 {
    WNDCLASSEX wcex;
@@ -117,7 +93,7 @@ public:
       cw = w/cols;
       ch = h/rows;
       if ( ch < 3 || cw < 3 ) {
-         MessageBoxA(0,"cells are to small","game of life",MB_OK);
+         //MessageBoxA(0,"cells are to small","game of life",MB_OK);
       }
    }
    RECT rect_at(size_t rows, size_t cols)
@@ -257,12 +233,6 @@ public:
          }
       } else throw std::exception("unexpected cell status in "__FUNCTION__);
       
-      /*
-      if ( violating(re) ) {
-         Beep(2000,200);
-         ret = !ret;
-      }
-      */
       return ret;
    }
 
@@ -336,8 +306,8 @@ std::pair<ULONGLONG,ULONGLONG> ptime()
 
 std::pair<ULONGLONG,ULONGLONG> start_time;
 std::pair<ULONGLONG,ULONGLONG> end_time(0,0);
-Cells cells(150,150,0/*0.25*/);
-Cells temp(150,150,0);
+Cells cells(170,170,0/*0.25*/);
+Cells temp(170,170,0);
 Grid grid;
 
 std::set< Cells > generations;
@@ -401,7 +371,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
    F_pentomino.push_back(Point(1,1));
    F_pentomino.push_back(Point(2,1));
 
-   cells.set(F_pentomino);
+   //cells.set(F_pentomino);
 
    Animal die_hard;
    die_hard.push_back(Point(0,6));
@@ -413,6 +383,19 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
    die_hard.push_back(Point(2,7));
 
    //cells.set(die_hard);
+
+   Animal acorn;
+   acorn.push_back(Point(0,2));
+   acorn.push_back(Point(1,4));
+   acorn.push_back(Point(2,1));
+   acorn.push_back(Point(2,2));
+   acorn.push_back(Point(2,5));
+   acorn.push_back(Point(2,6));
+   acorn.push_back(Point(2,7));
+
+   cells.set( acorn );
+
+
    
    start_time = ptime();
 
@@ -436,8 +419,10 @@ void draw_cnt(HDC hdc, RECT cr)
       ULONGLONG k = ((end_time.first -start_time.first )*100)/1000000000;
       ULONGLONG u = ((end_time.second-start_time.second)*100)/1000000000;
       oss << "-k" << k
-          << "-u" << u
-          << "-f" << cnt/(k+u);
+          << "-u" << u;
+      if ( k+u != 0 ) {
+          oss << "-f" << cnt/(k+u);
+      }
    }
    std::string& s(oss.str());
    TextOutA(hdc,cr.right-s.length()*8,cr.bottom-20,s.c_str(),s.length());
@@ -446,22 +431,68 @@ void draw_cnt(HDC hdc, RECT cr)
 
 bool draw_sticky = false;
 
-//
-//  FUNCTION: WndProc(HWND, UINT, WPARAM, LPARAM)
-//
-//  PURPOSE:  Processes messages for the main window.
-//
-//  WM_COMMAND   - process the application menu
-//  WM_PAINT   - Paint the main window
-//  WM_DESTROY   - post a quit message and return
-//
-//
+void OnPaint(HWND hWnd)
+{
+   PAINTSTRUCT ps;
+   HDC hdc;
+   if ( draw_sticky ) {
+      RECT cr;
+      GetClientRect(hWnd,&cr);
+      grid.set(cr,cells.r,cells.c);
+      hdc = BeginPaint(hWnd, &ps);
+      for ( size_t r = 0; r < grid.r; r++ ) {
+         for ( size_t c = 0; c < grid.c; c++ ) {
+            RECT rc = grid.rect_at(r,c);
+            int gray = 255-cells.percentile( cells.at_sticky(r,c) );
+            HBRUSH brush = CreateSolidBrush( RGB(gray,gray,gray) );
+            FillRect(hdc,&rc,brush);
+            DeleteObject(brush);
+         }
+      }
+      draw_cnt(hdc,cr);
+      EndPaint(hWnd, &ps);
+   } else {
+      RECT cr;
+      GetClientRect(hWnd,&cr);
+      grid.set(cr,cells.r,cells.c);
+      hdc = BeginPaint(hWnd, &ps);
+      for ( size_t r = 0; r < grid.r; r++ ) {
+         for ( size_t c = 0; c < grid.c; c++ ) {
+            RECT rc = grid.rect_at(r,c);
+            FillRect(hdc,&rc,cells.at(r,c)?black:white);
+         }
+      }
+      draw_cnt(hdc,cr);
+      EndPaint(hWnd, &ps);
+   }
+}
+
+void OnTimer(HWND hWnd)
+{
+   for ( size_t r = 0; r < grid.r; r++ ) {
+      for ( size_t c = 0; c < grid.c; c++ ) {
+         Cells::T v(cells.next_at(r,c));
+         temp.set(r,c,v);
+      }
+   }
+   if ( generations.count(cells) ) {
+      end_time = ptime();
+      KillTimer(hWnd,0);
+      Sleep(3000);
+      draw_sticky = true;
+      cells = temp;
+      InvalidateRect(hWnd,nullptr,TRUE);
+   } else {
+      generations.insert(cells);
+      cells = temp;
+      cnt++;
+      InvalidateRect(hWnd,nullptr,TRUE);
+   }
+}
+
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
    int wmId, wmEvent;
-   PAINTSTRUCT ps;
-   HDC hdc;
-   
 
    switch (message)
    {
@@ -482,61 +513,11 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
       }
       break;
    case WM_PAINT:
-      if ( draw_sticky ) {
-         RECT cr;
-         GetClientRect(hWnd,&cr);
-         grid.set(cr,cells.r,cells.c);
-         hdc = BeginPaint(hWnd, &ps);
-         for ( size_t r = 0; r < grid.r; r++ ) {
-            for ( size_t c = 0; c < grid.c; c++ ) {
-               RECT rc = grid.rect_at(r,c);
-               /*
-               int v = cells.at_sticky(r,c);
-               int gray = 255-(v*255)/cells.cnt_max;
-               */
-               int gray = 255-cells.percentile( cells.at_sticky(r,c) );
-               HBRUSH brush = CreateSolidBrush( RGB(gray,gray,gray) );
-               FillRect(hdc,&rc,brush);
-               DeleteObject(brush);
-            }
-         }
-         draw_cnt(hdc,cr);
-         EndPaint(hWnd, &ps);
-      } else {
-         RECT cr;
-         GetClientRect(hWnd,&cr);
-         grid.set(cr,cells.r,cells.c);
-         hdc = BeginPaint(hWnd, &ps);
-         for ( size_t r = 0; r < grid.r; r++ ) {
-            for ( size_t c = 0; c < grid.c; c++ ) {
-               RECT rc = grid.rect_at(r,c);
-               FillRect(hdc,&rc,cells.at(r,c)?black:white);
-            }
-         }
-         draw_cnt(hdc,cr);
-         EndPaint(hWnd, &ps);
-      }break;
-   case WM_TIMER:{
-      for ( size_t r = 0; r < grid.r; r++ ) {
-         for ( size_t c = 0; c < grid.c; c++ ) {
-            Cells::T v(cells.next_at(r,c));
-            temp.set(r,c,v);
-         }
-      }
-      if ( generations.count(cells) ) {
-         end_time = ptime();
-         KillTimer(hWnd,0);
-         Sleep(3000);
-         draw_sticky = true;
-         cells = temp;
-         InvalidateRect(hWnd,nullptr,TRUE);
-      } else {
-         generations.insert(cells);
-         cells = temp;
-         cnt++;
-         InvalidateRect(hWnd,nullptr,TRUE);
-      }
-      }break;
+      OnPaint( hWnd );
+      break;
+   case WM_TIMER:
+      OnTimer( hWnd );
+      break;
    case WM_DESTROY:
       PostQuitMessage(0);
       break;
@@ -546,7 +527,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
    return 0;
 }
 
-// Message handler for about box.
 INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 {
    UNREFERENCED_PARAMETER(lParam);
