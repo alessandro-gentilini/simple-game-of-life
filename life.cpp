@@ -700,6 +700,10 @@ void OnBench(HWND hWnd)
    oss << cnt << ", " << int(1000*average(speed)) << "fps, (" << average(ts) << ")ms";
    message = oss.str();
 
+   std::ofstream o("perf.txt",std::ios_base::app);
+   o << message << "\n";
+   o.close();
+
    draw_sticky = true;
    InvalidateRect(hWnd,NULL,TRUE);
 }
