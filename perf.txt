@@ -1,3 +1,4 @@
+pentium 4
 1105, 268fps, (k0u4057w4112)ms bench std::vector
 1105, 191fps, (k20u5681w5775)ms bench&log std::vector
 1105, 405fps, (k5u2713w2724)ms bench std::array
