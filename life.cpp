@@ -98,7 +98,7 @@ public:
    static const T live = true;
    std::default_random_engine re;
    
-   Cells( int rows=170, int cols=170, unsigned long seed=5489U, double p=0 ):r(rows),c(cols)
+   Cells( int rows=170, int cols=170, unsigned long seed=std::default_random_engine::default_seed, double p=0 ):r(rows),c(cols),rle_end_line('$'),rle_end_pattern('!')
    {
       re.seed(seed);
       std::bernoulli_distribution bern(p);
@@ -203,9 +203,40 @@ public:
       return ret;
    }
 
+   char rle_char(const T& t) const
+   {
+      switch(t){
+      case live: return 'o';
+      case dead: return 'b';
+      }
+      return 0;
+   }
+
+   // http://conwaylife.com/wiki/Rle
    std::string rle() const
    {
-      return "";
+      std::ostringstream oss;
+      oss << "x = " << c << ", y = " << r << "\n";
+
+      for ( int i = 0; i < r; i++ ) {
+         T cur = d[i][0];
+         size_t len = 0;
+         for ( int j = 0; j < c; j++ ) {
+            if ( d[i][j]==cur ) {
+               len++;
+               if ( j==c-1 ) {
+                  oss << len << rle_char(cur);
+               }
+            } else {
+               oss << len << rle_char(cur);
+               cur = d[i][j];
+               len = 1;
+            }
+         }
+         oss << rle_end_line;
+      }
+      oss << rle_end_pattern << "\n";
+      return oss.str();
    }
 
    bool operator<(const Cells& rhs) const
@@ -254,6 +285,8 @@ private:
    std::vector< std::vector< int > > cnt;
    std::vector< int > perc;
    std::map< int, int > memo_perc;
+
+   char rle_end_line, rle_end_pattern;
 };
 
 class Generations
@@ -288,11 +321,13 @@ Grid grid;
 Generations generations;
 
 bool draw_sticky = false;
+bool log_status = false;
 int cnt = 0;
 HBRUSH black;
 HBRUSH white;
 std::string message;
 DWORD seed = 0;
+std::ofstream log_file;
 
 
 int APIENTRY _tWinMain(HINSTANCE hInstance, HINSTANCE, LPTSTR, int nCmdShow)
@@ -440,8 +475,6 @@ std::ostream& operator<<(std::ostream& o,const Times& t)
    return o;
 }
 
-
-
 void init()
 {
    cnt = 0;
@@ -518,6 +551,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
    
    black = HBRUSH(GetStockObject(BLACK_BRUSH));
    white = HBRUSH(GetStockObject(WHITE_BRUSH));
+   log_file.open("simple-life.log");
 
    ShowWindow(hWnd, nCmdShow);
    UpdateWindow(hWnd);
@@ -578,6 +612,9 @@ void play()
             temp.set(r,c,v);
          }
       }
+      if ( log_status ) {
+         log_file << cnt << "\n" << cells.rle();
+      }
       generations.insert(cells);
       cells = temp;
       cnt++;
@@ -595,6 +632,9 @@ void OnTimer(HWND hWnd)
          Cells::T v(cells.next_at(r,c));
          temp.set(r,c,v);
       }
+   }
+   if ( log_status ) {
+      log_file << cnt << "\n" << cells.rle();
    }
    if ( generations.count(cells) ) {
       KillTimer(hWnd,0);
@@ -626,6 +666,7 @@ typename T::value_type average( const T& seq )
 void OnStart(HWND hWnd)
 {
    init();
+   log_status = false;
    draw_sticky = false;
    SetTimer(hWnd,0,10,NULL);
 }
@@ -664,15 +705,30 @@ void OnBench(HWND hWnd)
    InvalidateRect(hWnd,NULL,TRUE);
 }
 
+void OnBenchAndLog(HWND hWnd)
+{
+   log_status = true;
+   OnBench(hWnd);
+}
+
 void OnRandom(HWND hWnd)
 {
    OnStop(hWnd);
+   log_status = false;
    draw_sticky = false;
    cnt = 0 ;
    seed = GetTickCount();
    cells = Cells(170,170,seed,0.05);
    temp.reset();
    OnRestart(hWnd);
+}
+
+void OnPlayAndLog(HWND hWnd)
+{ 
+   log_status = true;
+   init();
+   draw_sticky = false;
+   SetTimer(hWnd,0,10,NULL);
 }
 
 bool CommandProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
@@ -687,8 +743,14 @@ bool CommandProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
    case IDM_BENCH:
       OnBench(hWnd);
       break;
+   case IDM_BENCH_AND_LOG:
+      OnBenchAndLog(hWnd);
+      break;
    case IDM_START:
       OnStart(hWnd);
+      break;
+   case IDM_PLAY_AND_LOG:
+      OnPlayAndLog(hWnd);
       break;
    case IDM_RANDOM:
       OnRandom(hWnd);

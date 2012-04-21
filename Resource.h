@@ -15,6 +15,8 @@
 #define IDM_STOP            111
 #define IDM_RESTART  112
 #define IDM_RANDOM 113
+#define IDM_PLAY_AND_LOG 114
+#define IDM_BENCH_AND_LOG 115
 #define IDI_LIFE         107
 #define IDI_SMALL            108
 #define IDC_LIFE         109
