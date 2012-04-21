@@ -101,12 +101,8 @@ public:
    {
       re.seed(seed);
       std::bernoulli_distribution bern(p);
-      d.resize( rows );
-      cnt.resize( rows );
       for ( int r = 0; r < rows; r++ ) {
-         d[r].resize( cols );
          std::generate_n( d[r].begin(), cols, [&](){return bern(re);} );
-         cnt[r].resize( cols );
          std::generate_n( cnt[r].begin(), cols, [&](){return 0;} );
       }
    }
@@ -114,9 +110,7 @@ public:
    void reset()
    {
       for ( int i = 0; i < r; i++ ) {
-         d[i].resize( c );
          std::generate_n( d[i].begin(), c, [&](){return false;} );
-         cnt[i].resize( c );
          std::generate_n( cnt[i].begin(), c, [&](){return 0;} );
       }
    }
@@ -280,8 +274,9 @@ public:
 
    int r,c;
 private:
-   std::vector< std::vector< T > > d;
-   std::vector< std::vector< int > > cnt;
+   static const size_t sz = 170;
+   std::array< std::array< T, sz >, sz > d;
+   std::array< std::array< int, sz >, sz > cnt;
    std::vector< int > perc;
    std::map< int, int > memo_perc;
 
