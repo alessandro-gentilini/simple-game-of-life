@@ -17,6 +17,8 @@
 #define IDM_RANDOM 113
 #define IDM_PLAY_AND_LOG 114
 #define IDM_BENCH_AND_LOG 115
+#define IDM_PARALLEL_BENCH 116
+#define IDM_PARALLEL_BENCH_AND_LOG 117
 #define IDI_LIFE         107
 #define IDI_SMALL            108
 #define IDC_LIFE         109

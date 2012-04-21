@@ -11,6 +11,8 @@ License: GNU General Public License v3
 #include "stdafx.h"
 #include "life.h"
 
+#include <ppl.h>
+
 #include <vector>
 #include <random>
 #include <algorithm>
@@ -36,6 +38,7 @@ BOOL InitInstance(HINSTANCE, int);
 LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
 INT_PTR CALLBACK About(HWND, UINT, WPARAM, LPARAM);
 void play();
+void parallel_play();
 
 class Grid
 {
@@ -601,8 +604,7 @@ void play()
    while( generations.count(cells)==0 ) {
       for ( int r = 0; r < cells.r; r++ ) {
          for ( int c = 0; c < cells.c; c++ ) {
-            Cells::T v(cells.next_at(r,c));
-            temp.set(r,c,v);
+            temp.set(r,c,cells.next_at(r,c));
          }
       }
       if ( log_status ) {
@@ -613,6 +615,24 @@ void play()
       cnt++;
    }
 }
+
+void parallel_play()
+{
+   while( generations.count(cells)==0 ) {
+      for ( int r = 0; r < cells.r; r++ ) {
+         Concurrency::parallel_for ( 0, cells.c, [&r](int c) {
+            temp.set(r,c,cells.next_at(r,c));
+         });
+      }
+      if ( log_status ) {
+         log_file << cnt << "\n" << cells.rle();
+      }
+      generations.insert(cells);
+      cells = temp;
+      cnt++;
+   }
+}
+
 
 void OnTimer(HWND hWnd)
 {
@@ -702,10 +722,45 @@ void OnBench(HWND hWnd)
    InvalidateRect(hWnd,NULL,TRUE);
 }
 
+void OnParallelBench(HWND hWnd)
+{
+   const size_t sz = 3;
+   std::array< Times, sz > ts;
+   std::array< double, sz > speed;
+   for ( size_t i = 0; i < sz; i++ ) {
+      init();
+
+      StopWatch t;
+      t.start();
+      parallel_play();
+      ts[i] = t.delta_msec();
+
+      speed[i] = double(cnt)/ts[i].wall;
+   }
+
+   std::ostringstream oss;
+   oss << cnt << ", " << int(1000*average(speed)) << "fps, (" << average(ts) << ")ms";
+   message = oss.str();
+
+   std::ofstream o("perf.txt",std::ios_base::app);
+   o << message << "\n";
+   o.close();
+
+   draw_sticky = true;
+   InvalidateRect(hWnd,NULL,TRUE);
+}
+
+
 void OnBenchAndLog(HWND hWnd)
 {
    log_status = true;
    OnBench(hWnd);
+}
+
+void OnParallelBenchAndLog(HWND hWnd)
+{
+   log_status = true;
+   OnParallelBench(hWnd);
 }
 
 void OnRandom(HWND hWnd)
@@ -742,6 +797,12 @@ bool CommandProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
       break;
    case IDM_BENCH_AND_LOG:
       OnBenchAndLog(hWnd);
+      break;
+   case IDM_PARALLEL_BENCH:
+      OnParallelBench(hWnd);
+      break;
+   case IDM_PARALLEL_BENCH_AND_LOG:
+      OnParallelBenchAndLog(hWnd);
       break;
    case IDM_START:
       OnStart(hWnd);
