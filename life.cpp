@@ -27,7 +27,6 @@ License: GNU General Public License v3
 
 #define MAX_LOADSTRING 100
 
-
 HINSTANCE hInst;
 TCHAR szTitle[MAX_LOADSTRING];
 TCHAR szWindowClass[MAX_LOADSTRING];
@@ -102,16 +101,16 @@ public:
       re.seed(seed);
       std::bernoulli_distribution bern(p);
       for ( int r = 0; r < rows; r++ ) {
-         std::generate_n( d[r].begin(), cols, [&](){return bern(re);} );
-         std::generate_n( cnt[r].begin(), cols, [&](){return 0;} );
+         std::generate_n( std::begin(d[r]), cols, [&](){return bern(re);} );
+         std::generate_n( std::begin(cnt[r]), cols, [&](){return 0;} );
       }
    }
 
    void reset()
    {
       for ( int i = 0; i < r; i++ ) {
-         std::generate_n( d[i].begin(), c, [&](){return false;} );
-         std::generate_n( cnt[i].begin(), c, [&](){return 0;} );
+         std::generate_n( std::begin(d[i]), c, [&](){return false;} );
+         std::generate_n( std::begin(cnt[i]), c, [&](){return 0;} );
       }
    }
    
