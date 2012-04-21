@@ -10,6 +10,11 @@
 #define IDD_ABOUTBOX         103
 #define IDM_ABOUT            104
 #define IDM_EXIT            105
+#define IDM_BENCH            106
+#define IDM_START            110
+#define IDM_STOP            111
+#define IDM_RESTART  112
+#define IDM_RANDOM 113
 #define IDI_LIFE         107
 #define IDI_SMALL            108
 #define IDC_LIFE         109

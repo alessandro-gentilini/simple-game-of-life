@@ -3,8 +3,8 @@ Simple game of Life
 
 Warning: the code is not polished!
 
-Author:  Alessandro Gentilini
-Source:  https://agentilini@code.google.com/p/simple-game-of-life/
+Author :  Alessandro Gentilini
+Source :  https://agentilini@code.google.com/p/simple-game-of-life/
 License: GNU General Public License v3
 */
 
@@ -18,6 +18,10 @@ License: GNU General Public License v3
 #include <ctime>
 #include <deque>
 #include <map>
+#include <numeric>
+#include <array>
+#include <fstream>
+#include <iostream>
 
 #undef max
 #undef min
@@ -33,50 +37,7 @@ ATOM MyRegisterClass(HINSTANCE hInstance);
 BOOL InitInstance(HINSTANCE, int);
 LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
 INT_PTR CALLBACK About(HWND, UINT, WPARAM, LPARAM);
-
-
-int APIENTRY _tWinMain(HINSTANCE hInstance, HINSTANCE, LPTSTR, int nCmdShow)
-{
-   LoadString(hInstance, IDS_APP_TITLE, szTitle, MAX_LOADSTRING);
-   LoadString(hInstance, IDC_LIFE, szWindowClass, MAX_LOADSTRING);
-   MyRegisterClass(hInstance);
-
-   if (!InitInstance(hInstance, nCmdShow)) {
-      return FALSE;
-   }
-
-   HACCEL hAccelTable = LoadAccelerators(hInstance, MAKEINTRESOURCE(IDC_LIFE));
-   MSG msg;
-   while (GetMessage(&msg, NULL, 0, 0)) {
-      if (!TranslateAccelerator(msg.hwnd, hAccelTable, &msg)) {
-         TranslateMessage(&msg);
-         DispatchMessage(&msg);
-      }
-   }
-
-   return (int) msg.wParam;
-}
-
-ATOM MyRegisterClass(HINSTANCE hInstance)
-{
-   WNDCLASSEX wcex;
-
-   wcex.cbSize = sizeof(WNDCLASSEX);
-
-   wcex.style         = CS_HREDRAW | CS_VREDRAW;
-   wcex.lpfnWndProc   = WndProc;
-   wcex.cbClsExtra      = 0;
-   wcex.cbWndExtra      = 0;
-   wcex.hInstance      = hInstance;
-   wcex.hIcon         = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_LIFE));
-   wcex.hCursor      = LoadCursor(NULL, IDC_ARROW);
-   wcex.hbrBackground   = (HBRUSH)(COLOR_WINDOW+1);
-   wcex.lpszMenuName   = MAKEINTRESOURCE(IDC_LIFE);
-   wcex.lpszClassName   = szWindowClass;
-   wcex.hIconSm      = LoadIcon(wcex.hInstance, MAKEINTRESOURCE(IDI_SMALL));
-
-   return RegisterClassEx(&wcex);
-}
+void play();
 
 class Grid
 {
@@ -119,7 +80,6 @@ public:
    int x,y;
 };
 
-
 class Animal
 {
 public:
@@ -130,7 +90,6 @@ private:
    std::vector< Point > a;
 };
 
-
 class Cells
 {
 public:
@@ -138,11 +97,10 @@ public:
    static const T dead = false;
    static const T live = true;
    std::default_random_engine re;
-   std::bernoulli_distribution violating;
-
-   Cells( int rows, int cols, double p ):r(rows),c(cols),cnt_max(0)
+   
+   Cells( int rows=170, int cols=170, unsigned long seed=5489U, double p=0 ):r(rows),c(cols)
    {
-      violating.param(0.00004);
+      re.seed(seed);
       std::bernoulli_distribution bern(p);
       d.resize( rows );
       cnt.resize( rows );
@@ -151,6 +109,16 @@ public:
          std::generate_n( d[r].begin(), cols, [&](){return bern(re);} );
          cnt[r].resize( cols );
          std::generate_n( cnt[r].begin(), cols, [&](){return 0;} );
+      }
+   }
+
+   void reset()
+   {
+      for ( int i = 0; i < r; i++ ) {
+         d[i].resize( c );
+         std::generate_n( d[i].begin(), c, [&](){return false;} );
+         cnt[i].resize( c );
+         std::generate_n( cnt[i].begin(), c, [&](){return 0;} );
       }
    }
    
@@ -172,7 +140,6 @@ public:
       d[row][col] = value;
       if ( value==live ) {
          cnt[row][col]++;
-         cnt_max = std::max(cnt_max,cnt[row][col]);
       }
    }
 
@@ -262,11 +229,7 @@ public:
          std::ostringstream oss;
          for ( size_t i = 0; i < 256; i++ ) {
             perc[i] = vs[size_t(0.5+double(i*vs.size())/256)];
-            oss << i << " " << perc[i] << "\n";
          }
-         oss << "min=" << *std::min_element(vs.begin(), vs.end()) << " max=" << *std::max_element(vs.begin(), vs.end());
-         OutputDebugStringA( oss.str().c_str() );
-
       }
       if ( memo_perc.count(live_count) ) {
          return memo_perc[live_count];
@@ -285,7 +248,7 @@ public:
       return d == rhs.d;
    }
 
-   int r,c,cnt_max;
+   int r,c;
 private:
    std::vector< std::vector< T > > d;
    std::vector< std::vector< int > > cnt;
@@ -293,32 +256,10 @@ private:
    std::map< int, int > memo_perc;
 };
 
-
-std::pair<ULONGLONG,ULONGLONG> ptime()
-{
-   FILETIME c, e, k, u;
-   GetProcessTimes( GetCurrentProcess(), &c, &e, &k, &u );
-   
-   ULARGE_INTEGER uli;
-   uli.HighPart = u.dwHighDateTime;
-   uli.LowPart  = u.dwLowDateTime;
-
-   ULARGE_INTEGER kli;
-   kli.HighPart = k.dwHighDateTime;
-   kli.LowPart  = k.dwLowDateTime;
-   return std::make_pair(kli.QuadPart,uli.QuadPart);
-}
-
-std::pair<ULONGLONG,ULONGLONG> start_time;
-std::pair<ULONGLONG,ULONGLONG> end_time(0,0);
-Cells cells(170,170,0/*0.25*/);
-Cells temp(170,170,0);
-Grid grid;
-
 class Generations
 {
 public:
-   Generations (size_t sz):size(sz){}
+   Generations (size_t sz=10):size(sz){}
    
    size_t count( const Cells& c ) const 
    {
@@ -339,28 +280,173 @@ private:
    const size_t size;
 };
 
-Generations generations(3);
 
+// globals!
+Cells cells;
+Cells temp;
+Grid grid;
+Generations generations;
+
+bool draw_sticky = false;
+int cnt = 0;
 HBRUSH black;
 HBRUSH white;
+std::string message;
+DWORD seed = 0;
 
-BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
+
+int APIENTRY _tWinMain(HINSTANCE hInstance, HINSTANCE, LPTSTR, int nCmdShow)
 {
-   HWND hWnd;
+   LoadString(hInstance, IDS_APP_TITLE, szTitle, MAX_LOADSTRING);
+   LoadString(hInstance, IDC_LIFE, szWindowClass, MAX_LOADSTRING);
+   MyRegisterClass(hInstance);
 
-   hInst = hInstance; // Store instance handle in our global variable
-
-   hWnd = CreateWindow(szWindowClass, szTitle, WS_OVERLAPPEDWINDOW,
-      CW_USEDEFAULT, 0, CW_USEDEFAULT, 0, NULL, NULL, hInstance, NULL);
-
-   if (!hWnd)
-   {
+   if (!InitInstance(hInstance, nCmdShow)) {
       return FALSE;
    }
 
-   SetTimer(hWnd,0,1,nullptr);
-   black = HBRUSH(GetStockObject(BLACK_BRUSH));
-   white = HBRUSH(GetStockObject(WHITE_BRUSH));
+   HACCEL hAccelTable = LoadAccelerators(hInstance, MAKEINTRESOURCE(IDC_LIFE));
+   MSG msg;
+   while (GetMessage(&msg, NULL, 0, 0)) {
+      if (!TranslateAccelerator(msg.hwnd, hAccelTable, &msg)) {
+         TranslateMessage(&msg);
+         DispatchMessage(&msg);
+      }
+   }
+
+   return (int) msg.wParam;
+}
+
+ATOM MyRegisterClass(HINSTANCE hInstance)
+{
+   WNDCLASSEX wcex;
+
+   wcex.cbSize = sizeof(WNDCLASSEX);
+
+   wcex.style         = CS_HREDRAW | CS_VREDRAW;
+   wcex.lpfnWndProc   = WndProc;
+   wcex.cbClsExtra      = 0;
+   wcex.cbWndExtra      = 0;
+   wcex.hInstance      = hInstance;
+   wcex.hIcon         = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_LIFE));
+   wcex.hCursor      = LoadCursor(NULL, IDC_ARROW);
+   wcex.hbrBackground   = (HBRUSH)(COLOR_WINDOW+1);
+   wcex.lpszMenuName   = MAKEINTRESOURCE(IDC_LIFE);
+   wcex.lpszClassName   = szWindowClass;
+   wcex.hIconSm      = LoadIcon(wcex.hInstance, MAKEINTRESOURCE(IDI_SMALL));
+
+   return RegisterClassEx(&wcex);
+}
+
+
+struct Times
+{
+   Times():kernel(0),user(0),wall(0){}
+
+   Times& operator-( const Times& rhs ) 
+   {
+      kernel -= rhs.kernel;
+      user   -= rhs.user;
+      wall   -= rhs.wall;
+      return *this;
+   }
+
+   Times& operator+( const Times& rhs ) 
+   {
+      kernel += rhs.kernel;
+      user   += rhs.user;
+      wall   += rhs.wall;
+      return *this;
+   }
+
+   Times& operator/( int i  ) 
+   {
+      kernel /= i;
+      user   /= i;
+      wall   /= i;
+      return *this;
+   }
+
+   std::string to_string() const
+   {
+      std::ostringstream oss;
+      oss << "k" << kernel << "u" << user << "w" << wall;
+      return oss.str();
+   }
+
+   ULONGLONG kernel,user;
+   LONGLONG  wall;
+};
+
+class StopWatch
+{
+public:
+   void start()
+   {
+      start_t = now();
+   }
+
+   Times delta_sec() const
+   {
+      Times t(now() - start_t);
+      t.kernel = (t.kernel*100)/1000000000;
+      t.user   = (t.user  *100)/1000000000;
+      LARGE_INTEGER f;
+      QueryPerformanceFrequency(&f);
+      t.wall /= f.QuadPart;
+      return t; 
+   }
+
+   Times delta_msec() const
+   {
+      Times t(now() - start_t);
+      t.kernel = (t.kernel*100)/1000000;
+      t.user   = (t.user  *100)/1000000;
+      LARGE_INTEGER f;
+      QueryPerformanceFrequency(&f);
+      t.wall = (t.wall * 1000) / f.QuadPart;
+      return t; 
+   }
+
+private:
+   ULONGLONG ft2ull( const FILETIME& ft ) const
+   {
+      ULARGE_INTEGER uli;
+      uli.HighPart = ft.dwHighDateTime;
+      uli.LowPart  = ft.dwLowDateTime;
+      return uli.QuadPart;
+   }
+
+   Times now() const
+   {
+      Times t;
+      FILETIME c, e, k, u;
+      GetProcessTimes( GetCurrentProcess(), &c, &e, &k, &u );
+      t.kernel = ft2ull(k);
+      t.user   = ft2ull(u);
+      
+      LARGE_INTEGER li;
+      QueryPerformanceCounter(&li);
+      t.wall = li.QuadPart;
+      return t;
+   }
+
+   Times start_t;
+};
+
+std::ostream& operator<<(std::ostream& o,const Times& t)
+{
+   o << t.to_string();
+   return o;
+}
+
+
+
+void init()
+{
+   cnt = 0;
+   cells.reset();
+   temp.reset();
 
    Animal blinker;
    blinker.push_back(Point(1,0));
@@ -413,10 +499,25 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
    acorn.push_back(Point(2,7));
 
    //cells.set( acorn );
+}
 
+BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
+{
+   HWND hWnd;
+
+   hInst = hInstance; // Store instance handle in our global variable
+
+   hWnd = CreateWindow(szWindowClass, szTitle, WS_OVERLAPPEDWINDOW,
+      CW_USEDEFAULT, 0, CW_USEDEFAULT, 0, NULL, NULL, hInstance, NULL);
+
+   if (!hWnd)
+   {
+      return FALSE;
+   }
 
    
-   start_time = ptime();
+   black = HBRUSH(GetStockObject(BLACK_BRUSH));
+   white = HBRUSH(GetStockObject(WHITE_BRUSH));
 
    ShowWindow(hWnd, nCmdShow);
    UpdateWindow(hWnd);
@@ -424,31 +525,10 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
    return TRUE;
 }
 
-
-
-
-
-int cnt = 0;
-
 void draw_cnt(HDC hdc, RECT cr)
 {
-   std::ostringstream oss;
-   oss << cnt;
-   if ( end_time.first && end_time.second ) {
-      ULONGLONG k = ((end_time.first -start_time.first )*100)/1000000000;
-      ULONGLONG u = ((end_time.second-start_time.second)*100)/1000000000;
-      oss << "-k" << k
-          << "-u" << u;
-      if ( k+u != 0 ) {
-          oss << "-f" << cnt/(k+u);
-      }
-   }
-   std::string& s(oss.str());
-   TextOutA(hdc,cr.right-s.length()*8,cr.bottom-20,s.c_str(),s.length());
+   TextOutA(hdc,cr.right-message.length()*8,cr.bottom-20,message.c_str(),message.length());
 }
-
-
-bool draw_sticky = false;
 
 void OnPaint(HWND hWnd)
 {
@@ -481,13 +561,35 @@ void OnPaint(HWND hWnd)
             FillRect(hdc,&rc,cells.at(r,c)?black:white);
          }
       }
+      std::ostringstream oss;
+      oss << cnt;
+      message = oss.str();
       draw_cnt(hdc,cr);
       EndPaint(hWnd, &ps);
    }
 }
 
+void play()
+{
+   while( generations.count(cells)==0 ) {
+      for ( int r = 0; r < cells.r; r++ ) {
+         for ( int c = 0; c < cells.c; c++ ) {
+            Cells::T v(cells.next_at(r,c));
+            temp.set(r,c,v);
+         }
+      }
+      generations.insert(cells);
+      cells = temp;
+      cnt++;
+   }
+}
+
 void OnTimer(HWND hWnd)
 {
+   static StopWatch sw;
+   if ( cnt==0 ) {
+      sw.start();
+   }
    for ( size_t r = 0; r < grid.r; r++ ) {
       for ( size_t c = 0; c < grid.c; c++ ) {
          Cells::T v(cells.next_at(r,c));
@@ -495,39 +597,123 @@ void OnTimer(HWND hWnd)
       }
    }
    if ( generations.count(cells) ) {
-      end_time = ptime();
       KillTimer(hWnd,0);
       Sleep(3000);
       draw_sticky = true;
       cells = temp;
-      InvalidateRect(hWnd,nullptr,TRUE);
+      std::ostringstream oss;
+      Times delta = sw.delta_sec();
+      oss << "seed=" << seed << " " << cnt << ", " << cnt/delta.wall << "fps, (" << delta << ")sec";
+      message = oss.str();
+      std::ofstream o("simple-life.txt",std::ios_base::app);
+      o << message << "\n";
+      o.close();
+      InvalidateRect(hWnd,NULL,TRUE);
    } else {
       generations.insert(cells);
       cells = temp;
       cnt++;
-      InvalidateRect(hWnd,nullptr,TRUE);
+      InvalidateRect(hWnd,NULL,TRUE);
    }
+}
+
+template < class T >
+typename T::value_type average( const T& seq )
+{
+   return std::accumulate( seq.begin(), seq.end(), typename T::value_type() ) / seq.size();
+}
+
+void OnStart(HWND hWnd)
+{
+   init();
+   draw_sticky = false;
+   SetTimer(hWnd,0,10,NULL);
+}
+
+void OnRestart(HWND hWnd)
+{
+   SetTimer(hWnd,0,10,NULL);
+}
+
+void OnStop(HWND hWnd)
+{
+   KillTimer(hWnd,0);
+}
+
+void OnBench(HWND hWnd)
+{
+   const size_t sz = 3;
+   std::array< Times, sz > ts;
+   std::array< double, sz > speed;
+   for ( size_t i = 0; i < sz; i++ ) {
+      init();
+
+      StopWatch t;
+      t.start();
+      play();
+      ts[i] = t.delta_msec();
+
+      speed[i] = double(cnt)/ts[i].wall;
+   }
+
+   std::ostringstream oss;
+   oss << cnt << ", " << int(1000*average(speed)) << "fps, (" << average(ts) << ")ms";
+   message = oss.str();
+
+   draw_sticky = true;
+   InvalidateRect(hWnd,NULL,TRUE);
+}
+
+void OnRandom(HWND hWnd)
+{
+   OnStop(hWnd);
+   draw_sticky = false;
+   cnt = 0 ;
+   seed = GetTickCount();
+   cells = Cells(170,170,seed,0.05);
+   temp.reset();
+   OnRestart(hWnd);
+}
+
+bool CommandProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
+{
+   int wmId    = LOWORD(wParam);
+   int wmEvent = HIWORD(wParam);
+   switch (wmId)
+   {
+   case IDM_ABOUT:
+      DialogBox(hInst, MAKEINTRESOURCE(IDD_ABOUTBOX), hWnd, About);
+      break;
+   case IDM_BENCH:
+      OnBench(hWnd);
+      break;
+   case IDM_START:
+      OnStart(hWnd);
+      break;
+   case IDM_RANDOM:
+      OnRandom(hWnd);
+      break;
+   case IDM_RESTART:
+      OnRestart(hWnd);
+      break;
+   case IDM_STOP:
+      OnStop(hWnd);
+      break;
+   case IDM_EXIT:
+      DestroyWindow(hWnd);
+      break;
+   default:
+      return false;
+   }
+   return true;
 }
 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
-   int wmId, wmEvent;
-
    switch (message)
    {
    case WM_COMMAND:
-      wmId    = LOWORD(wParam);
-      wmEvent = HIWORD(wParam);
-      // Parse the menu selections:
-      switch (wmId)
-      {
-      case IDM_ABOUT:
-         DialogBox(hInst, MAKEINTRESOURCE(IDD_ABOUTBOX), hWnd, About);
-         break;
-      case IDM_EXIT:
-         DestroyWindow(hWnd);
-         break;
-      default:
+      if ( !CommandProc(hWnd,message,wParam,lParam) ) {
          return DefWindowProc(hWnd, message, wParam, lParam);
       }
       break;
