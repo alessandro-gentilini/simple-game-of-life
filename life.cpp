@@ -3,8 +3,8 @@ Simple game of Life
 
 Warning: the code is not polished!
 
-Author :  Alessandro Gentilini
-Source :  https://agentilini@code.google.com/p/simple-game-of-life/
+Author : Alessandro Gentilini
+Source : https://agentilini@code.google.com/p/simple-game-of-life/
 License: GNU General Public License v3
 */
 
@@ -15,7 +15,6 @@ License: GNU General Public License v3
 #include <random>
 #include <algorithm>
 #include <sstream>
-#include <ctime>
 #include <deque>
 #include <map>
 #include <numeric>
