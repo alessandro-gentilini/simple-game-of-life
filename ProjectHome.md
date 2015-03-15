@@ -1,0 +1,1 @@
+A simple C++ implementation of the Game of Life.
